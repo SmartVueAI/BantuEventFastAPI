@@ -2,30 +2,25 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies if needed
 RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy requirements first for better caching
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application
+# Copy entire project
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p logs static/profile_images
-
 # Create non-root user for security
-RUN useradd -m -u 1000 mcsmart1 && chown -R mcsmart1:mcsmart1 /app
-USER mcsmart1
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
 
 # Expose port
 EXPOSE 8000
 
-# Use uvicorn with proper workers
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run from app directory - note "app.main:app"
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
