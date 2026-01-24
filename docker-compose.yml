@@ -1,23 +1,4 @@
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: sonmahair_db
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   redis:
     image: redis:7-alpine
     container_name: sonmahair_redis
@@ -42,15 +23,13 @@ services:
     expose:
       - "8000"
     ports:
-      - "8002:8000"  # Added for direct access during testing
+      - "8002:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DATABASE_URL=${DATABASE_URL}  # Use the full URL from .env
       - REDIS_URL=redis://redis:6379/0
     env_file:
       - .env
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
@@ -65,5 +44,4 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   redis_data:
