@@ -24,8 +24,8 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="E-Commerce Platform API - Production Ready",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
+    docs_url="/documentation",
+    redoc_url="/redoc",
     openapi_url="/api/openapi.json",
 )
 
