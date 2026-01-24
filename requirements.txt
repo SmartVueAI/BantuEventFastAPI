@@ -16,3 +16,5 @@ slowapi==0.1.9
 loguru==0.7.3
 python-json-logger==2.0.7
 pillow==12.1.0
+pyjwt
+pydantic[email]
