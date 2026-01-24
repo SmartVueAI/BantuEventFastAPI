@@ -42,7 +42,7 @@ services:
     expose:
       - "8000"
     ports:
-      - "8000:8000"  # Added for direct access during testing
+      - "8002:8000"  # Added for direct access during testing
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - REDIS_URL=redis://redis:6379/0
