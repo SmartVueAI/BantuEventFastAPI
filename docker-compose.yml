@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:15-alpine
+    container_name: sonmahair_db
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -9,6 +10,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app_network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
       interval: 10s
@@ -17,10 +20,13 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: sonmahair_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - app_network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -29,11 +35,14 @@ services:
 
   api:
     build: .
-    container_name: sonma-hair-api
+    container_name: sonmahair_api
     networks:
       - nginx-proxy-manager_default
+      - app_network
     expose:
       - "8000"
+    ports:
+      - "8000:8000"  # Added for direct access during testing
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - REDIS_URL=redis://redis:6379/0
@@ -48,6 +57,12 @@ services:
       - ./logs:/app/logs
       - ./static:/app/static
     restart: unless-stopped
+
+networks:
+  nginx-proxy-manager_default:
+    external: true
+  app_network:
+    driver: bridge
 
 volumes:
   postgres_data:
