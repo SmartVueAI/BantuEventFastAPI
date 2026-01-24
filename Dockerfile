@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Create non-root user for security
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+RUN useradd -m -u 1000 mcsmart1 && chown -R mcsmart1:mcsmart1 /app
+USER mcsmart1
 
 # Expose port
 EXPOSE 8000
