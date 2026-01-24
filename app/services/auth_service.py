@@ -1,0 +1,459 @@
+"""
+Authentication Service
+"""
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from loguru import logger
+
+from app.crud.user import get_user_by_email, get_user_by_id
+from app.core.security import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    create_refresh_token,
+)
+from app.utils import (
+    generate_otp,
+    generate_guid,
+    generate_verification_token,
+    generate_random_password,
+    generate_security_stamp,
+)
+from app.services.email_service import (
+    send_otp_email,
+    send_password_reset_email,
+    send_password_changed_email,
+    send_user_creation_email,
+    send_account_locked_email,
+)
+from app.services.audit_service import AuditService
+from app.exceptions import (
+    UserNotFoundException,
+    InvalidCredentialsException,
+    AccountLockedException,
+    EmailNotConfirmedException,
+    InvalidOTPException,
+    InvalidTokenException,
+)
+from app.enums import AuditTypeEnum
+from app.core.constants import MAX_LOGIN_ATTEMPTS
+
+
+class AuthService:
+    """Authentication business logic service"""
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.audit_service = AuditService(db)
+    
+    async def login(self, email: str, password: str) -> dict:
+        """
+        User login
+        
+        Returns:
+            Login response with tokens
+        """
+        try:
+            # Get user
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise InvalidCredentialsException()
+            
+            # Check if email is confirmed
+            if not user.email_confirmed:
+                raise EmailNotConfirmedException()
+            
+            # Check if account is locked
+            if user.lockout_enabled:
+                # Log failed attempt
+                await self.audit_service.log_audit(
+                    audit_type=AuditTypeEnum.LOGIN,
+                    user_role=user.user_role,
+                    module_name="Authentication",
+                    table_name="users",
+                    processor_email=email,
+                    processed_by=f"{user.first_name} {user.last_name}",
+                    old_values=None,
+                    new_values='{"status": "locked"}'
+                )
+                
+                # Send account locked email
+                await send_account_locked_email(
+                    to_email=user.email,
+                    first_name=user.first_name or "User"
+                )
+                
+                raise AccountLockedException()
+            
+            # Verify password
+            if not verify_password(password, user.hashed_password):
+                # Increment failed attempt count
+                user.access_failed_count += 1
+                
+                # Lock account if max attempts reached
+                if user.access_failed_count >= MAX_LOGIN_ATTEMPTS:
+                    user.lockout_enabled = True
+                    user.lockout_date_time = datetime.utcnow()
+                    
+                    await self.db.commit()
+                    
+                    # Send account locked email
+                    await send_account_locked_email(
+                        to_email=user.email,
+                        first_name=user.first_name or "User"
+                    )
+                    
+                    raise AccountLockedException()
+                
+                await self.db.commit()
+                raise InvalidCredentialsException()
+            
+            # Reset failed attempt count
+            user.access_failed_count = 0
+            user.user_logged_In = True
+            user.last_logged_in_date = datetime.utcnow()
+            user.user_GUID = generate_guid()
+            
+            # Check if OTP is enabled
+            if user.use_otp_enabled:
+                # Generate and send OTP
+                otp = generate_otp()
+                user.otp = otp
+                
+                await self.db.commit()
+                
+                # Send OTP email
+                await send_otp_email(
+                    to_email=user.email,
+                    first_name=user.first_name or "User",
+                    otp=otp
+                )
+                
+                return {
+                    "access_token": "",
+                    "refresh_token": "",
+                    "token_type": "bearer",
+                    "requires_otp": True,
+                    "requires_password_change": user.default_password,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "first_name": user.first_name,
+                        "last_name": user.last_name,
+                    }
+                }
+            
+            # Generate tokens
+            access_token = create_access_token({
+                "email": user.email,
+                "user_id": user.id,
+                "role": user.user_role.value
+            })
+            
+            refresh_token = create_refresh_token({
+                "email": user.email,
+                "user_id": user.id
+            })
+            
+            user.refresh_token = refresh_token
+            user.refresh_token_expires = datetime.utcnow()
+            
+            await self.db.commit()
+            
+            # Log successful login
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.LOGIN,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}"
+            )
+            
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "requires_otp": False,
+                "requires_password_change": user.default_password,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "user_role": user.user_role.value,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Login error for {email}: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def resend_otp(self, email: str):
+        """Resend OTP to user"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Generate new OTP
+            otp = generate_otp()
+            user.otp = otp
+            
+            await self.db.commit()
+            
+            # Send OTP email
+            await send_otp_email(
+                to_email=user.email,
+                first_name=user.first_name or "User",
+                otp=otp
+            )
+            
+            logger.info(f"OTP resent to: {email}")
+            
+        except Exception as e:
+            logger.error(f"Resend OTP error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def verify_otp(self, email: str, otp: str) -> dict:
+        """Verify OTP and return tokens"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Verify OTP
+            if user.otp != otp:
+                raise InvalidOTPException()
+            
+            # Clear OTP
+            user.otp = None
+            
+            # Generate tokens
+            access_token = create_access_token({
+                "email": user.email,
+                "user_id": user.id,
+                "role": user.user_role.value
+            })
+            
+            refresh_token = create_refresh_token({
+                "email": user.email,
+                "user_id": user.id
+            })
+            
+            user.refresh_token = refresh_token
+            user.refresh_token_expires = datetime.utcnow()
+            
+            await self.db.commit()
+            
+            # Log successful login
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.LOGIN,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}"
+            )
+            
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "token_type": "bearer",
+                "requires_otp": False,
+                "requires_password_change": user.default_password,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                    "user_role": user.user_role.value,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Verify OTP error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def forgot_password(self, email: str):
+        """Request password reset"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Generate reset token
+            reset_token = generate_verification_token()
+            user.verification_token = reset_token
+            
+            await self.db.commit()
+            
+            # Send password reset email
+            await send_password_reset_email(
+                to_email=user.email,
+                first_name=user.first_name or "User",
+                reset_token=reset_token
+            )
+            
+            logger.info(f"Password reset email sent to: {email}")
+            
+        except Exception as e:
+            logger.error(f"Forgot password error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def reset_password(self, email: str, token: str, new_password: str):
+        """Reset password with token"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Verify token
+            if user.verification_token != token:
+                raise InvalidTokenException()
+            
+            # Update password
+            user.hashed_password = get_password_hash(new_password)
+            user.default_password = False
+            user.last_password_changed_date = datetime.utcnow()
+            user.verification_token = None
+            
+            await self.db.commit()
+            
+            # Send confirmation email
+            await send_password_changed_email(
+                to_email=user.email,
+                first_name=user.first_name or "User"
+            )
+            
+            # Log password change
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.UPDATE,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}",
+                new_values='{"password": "changed"}'
+            )
+            
+            logger.info(f"Password reset for: {email}")
+            
+        except Exception as e:
+            logger.error(f"Reset password error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def change_password(self, user_id: int, old_password: str, new_password: str):
+        """Change password for authenticated user"""
+        try:
+            user = await get_user_by_id(self.db, user_id)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Verify old password
+            if not verify_password(old_password, user.hashed_password):
+                raise InvalidCredentialsException("Current password is incorrect")
+            
+            # Update password
+            user.hashed_password = get_password_hash(new_password)
+            user.default_password = False
+            user.last_password_changed_date = datetime.utcnow()
+            
+            await self.db.commit()
+            
+            # Send confirmation email
+            await send_password_changed_email(
+                to_email=user.email,
+                first_name=user.first_name or "User"
+            )
+            
+            # Log password change
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.UPDATE,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}",
+                new_values='{"password": "changed"}'
+            )
+            
+            logger.info(f"Password changed for user: {user_id}")
+            
+        except Exception as e:
+            logger.error(f"Change password error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def verify_email(self, email: str, token: str):
+        """Verify user email"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Verify token
+            if user.verification_token != token:
+                raise InvalidTokenException()
+            
+            # Update user
+            user.email_confirmed = True
+            user.verified_date = datetime.utcnow()
+            user.verification_token = None
+            
+            await self.db.commit()
+            
+            logger.info(f"Email verified for: {email}")
+            
+        except Exception as e:
+            logger.error(f"Verify email error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def resend_verification_email(self, email: str):
+        """Resend verification email with new password"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+            
+            # Generate new password and token
+            new_password = generate_random_password()
+            user.hashed_password = get_password_hash(new_password)
+            user.security_stamp = generate_security_stamp()
+            user.verification_token = generate_verification_token()
+            
+            await self.db.commit()
+            
+            # Send verification email
+            await send_user_creation_email(
+                to_email=user.email,
+                first_name=user.first_name or "User",
+                verification_token=user.verification_token,
+                generated_password=new_password
+            )
+            
+            logger.info(f"Verification email resent to: {email}")
+            
+        except Exception as e:
+            logger.error(f"Resend verification email error: {str(e)}")
+            await self.db.rollback()
+            raise
+    
+    async def validate_guid(self, email: str, guid: str) -> bool:
+        """Validate user GUID"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                return False
+            
+            return user.user_GUID == guid
+            
+        except Exception as e:
+            logger.error(f"Validate GUID error: {str(e)}")
+            return False
