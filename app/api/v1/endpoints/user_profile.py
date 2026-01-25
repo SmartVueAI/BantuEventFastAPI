@@ -302,7 +302,7 @@ async def search_users(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     sort_by: str = Query("created_at"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     current_user: dict = Depends(require_staff),
     db: AsyncSession = Depends(get_db)
 ):
