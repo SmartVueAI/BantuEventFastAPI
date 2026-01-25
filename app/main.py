@@ -23,7 +23,7 @@ setup_logging()
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="E-Commerce Platform API - Production Ready",
+    description="Sonma Hair E-Commerce Platform API",
     docs_url="/documentation",
     redoc_url="/redoc",
     openapi_url="/api/openapi.json",
@@ -143,8 +143,8 @@ async def root():
     return {
         "message": f"Welcome to {settings.APP_NAME}",
         "version": settings.APP_VERSION,
-        "docs": "/api/docs",
-        "redoc": "/api/redoc",
+        "docs": "/documentation",
+        "redoc": "/redoc",
         "health": "/health",
         "status": "running"
     }
