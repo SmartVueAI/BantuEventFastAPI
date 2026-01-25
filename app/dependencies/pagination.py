@@ -21,7 +21,7 @@ class PaginationParams:
         sort_by: str = Query("created_at", description="Field to sort by"),
         sort_order: str = Query(
             "desc",
-            regex="^(asc|desc)$",
+            pattern="^(asc|desc)$",
             description="Sort order (asc or desc)"
         ),
     ):
@@ -48,7 +48,7 @@ class SearchParams:
         sort_by: str = Query("created_at", description="Field to sort by"),
         sort_order: str = Query(
             "desc",
-            regex="^(asc|desc)$",
+            pattern="^(asc|desc)$",
             description="Sort order (asc or desc)"
         ),
     ):
