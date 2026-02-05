@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Application
-    APP_NAME: str = "E-Commerce API"
+    APP_NAME: str
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "production"
@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str
     SMTP_FROM: str
     SMTP_FROM_NAME: str
+    SMTP_SUPPORT_EMAIL: str
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -76,8 +77,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # URLs
-    FRONTEND_URL: str = "http://localhost:3000"
-    BASE_URL: str = "http://localhost:8000"
+    FRONTEND_BASE_URL: str
+    BASE_URL: str
 
     # Testing
     TEST_DATABASE_URL: str = ""

@@ -49,12 +49,39 @@ class UserService:
             # Create user
             user, generated_password = await crud_create_user(self.db, user_data, created_by)
             
+            # 3. Send User Creation Email (in background task) https://sonmahair.com
+            # email_confirmation_link = f"{settings.FRONTEND_BASE_URL}/verify-email?email={new_user.email}&token={verification_token}"
+            # email_confirmation_link = f"https://sonmahair.com/verify-email?email={user.email}&token={user.verification_token}"
+            # email_subject = "Welcome to SmartVue! Confirm Your Account"
+            # email_html_content = f"""
+            #     <html>
+            #         <body>
+            #             <p>Dear {user.first_name},</p>
+            #             <p>Welcome to SmartVue! Your account has been successfully created.</p>
+            #             <p>Your email: <strong>{user.email}</strong></p>
+            #             <p>Your temporary password: <strong>{generated_password}</strong></p>
+            #             <p>Please click the link below to confirm your email address and activate your account:</p>
+            #             <p><a href="{email_confirmation_link}">Confirm Your Email</a></p>
+            #             <p>For security reasons, we recommend changing your temporary password after your first login.</p>
+            #             <p>If you did not request this, please ignore this email.</p>
+            #             <p>Best regards,</p>
+            #             <p>The SmartVue Team</p>
+            #         </body>
+            #     </html>
+            # """
+
+            # print(
+            #     f"User: '{user.email}' email confirm link is: '{email_confirmation_link}'")
+            # background_tasks.add_task(
+            # await email_service.send_email(str(user.email), email_subject, email_html_content)
+
             # Send creation email
             await send_user_creation_email(
                 to_email=user.email,
                 first_name=user.first_name or "User",
                 verification_token=user.verification_token,
                 generated_password=generated_password
+                # generated_password=email_html_content
             )
             
             # Log audit
