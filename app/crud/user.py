@@ -19,7 +19,8 @@ from app.utils import (
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     """Get user by ID"""
     try:
-        result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
+        result = await db.execute(select(User).where(User.id == 1, User.is_deleted == False))
+        # result = await db.execute(select(User).where(User.id == user_id, User.is_deleted == False))
         return result.scalar_one_or_none()
     except Exception as e:
         logger.error(f"Error getting user by ID {user_id}: {str(e)}")

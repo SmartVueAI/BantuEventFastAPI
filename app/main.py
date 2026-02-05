@@ -115,8 +115,12 @@ async def log_requests(request: Request, call_next):
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(
-            f"Error processing request: {request.method} {request.url.path} - "
-            f"Time: {process_time:.3f}s - Error: {str(e)}",
+            "Error processing request: {} {} - "
+            "Time: {:.3f}s - Error: {}",
+            request.method,
+            request.url.path,
+            process_time,
+            str(e),
             exc_info=True
         )
         raise

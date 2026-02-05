@@ -158,6 +158,19 @@ class ResetPasswordRequest(BaseModel):
         return v
 
 
+class NewUserChangePasswordRequest(BaseModel):
+    """Schema for change password request"""
+    email: EmailStr
+    old_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str = Field(..., min_length=8)
+
+    @validator('confirm_password')
+    def passwords_match(cls, v, values):
+        if 'new_password' in values and v != values['new_password']:
+            raise ValueError('Passwords do not match')
+        return v
+
 class ChangePasswordRequest(BaseModel):
     """Schema for change password request"""
     old_password: str = Field(..., min_length=1)

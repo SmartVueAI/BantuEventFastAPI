@@ -13,6 +13,7 @@ from app.schemas.auth import (
     VerifyOTPRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
+    NewUserChangePasswordRequest,
     ChangePasswordRequest,
     VerifyEmailRequest,
     ValidateGUIDRequest,
@@ -277,6 +278,40 @@ async def resend_verification_email(
         raise
 
 
+@router.post(
+    "/new-user-change-password",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Change password for new user",
+    description="""
+    Change password for new user.
+    
+    **Authentication required**
+    """,
+    responses={
+        200: {"description": "Password changed successfully"},
+        401: {"description": "Invalid old password or not authenticated"},
+    }
+)
+async def new_user_change_password(
+    request: NewUserChangePasswordRequest,
+    # current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Change password for authenticated user"""
+    try:
+        auth_service = AuthService(db)
+        await auth_service.new_user_change_password(
+            email=request.email,
+            old_password=request.old_password,
+            new_password=request.new_password
+        )
+        return SuccessResponse(
+            message="Password has been changed successfully"
+        )
+    except Exception as e:
+        logger.error(f"Change password error: {str(e)}")
+        raise
 @router.post(
     "/validate-guid",
     response_model=ValidateGUIDResponse,

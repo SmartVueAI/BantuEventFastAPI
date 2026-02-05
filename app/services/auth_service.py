@@ -46,6 +46,7 @@ class AuthService:
         self.db = db
         self.audit_service = AuditService(db)
     
+
     async def login(self, email: str, password: str) -> dict:
         """
         User login
@@ -58,11 +59,11 @@ class AuthService:
             user = await get_user_by_email(self.db, email)
             if not user:
                 raise InvalidCredentialsException()
-            
+
             # Check if email is confirmed
             if not user.email_confirmed:
                 raise EmailNotConfirmedException()
-            
+
             # Check if account is locked
             if user.lockout_enabled:
                 # Log failed attempt
@@ -76,59 +77,59 @@ class AuthService:
                     old_values=None,
                     new_values='{"status": "locked"}'
                 )
-                
+
                 # Send account locked email
                 await send_account_locked_email(
                     to_email=user.email,
                     first_name=user.first_name or "User"
                 )
-                
+
                 raise AccountLockedException()
-            
+
             # Verify password
             if not verify_password(password, user.hashed_password):
                 # Increment failed attempt count
                 user.access_failed_count += 1
-                
+
                 # Lock account if max attempts reached
                 if user.access_failed_count >= MAX_LOGIN_ATTEMPTS:
                     user.lockout_enabled = True
                     user.lockout_date_time = datetime.utcnow()
-                    
+
                     await self.db.commit()
-                    
+
                     # Send account locked email
                     await send_account_locked_email(
                         to_email=user.email,
                         first_name=user.first_name or "User"
                     )
-                    
+
                     raise AccountLockedException()
-                
+
                 await self.db.commit()
                 raise InvalidCredentialsException()
-            
+
             # Reset failed attempt count
             user.access_failed_count = 0
             user.user_logged_In = True
             user.last_logged_in_date = datetime.utcnow()
             user.user_GUID = generate_guid()
-            
+
             # Check if OTP is enabled
             if user.use_otp_enabled:
                 # Generate and send OTP
                 otp = generate_otp()
                 user.otp = otp
-                
+
                 await self.db.commit()
-                
+
                 # Send OTP email
                 await send_otp_email(
                     to_email=user.email,
                     first_name=user.first_name or "User",
                     otp=otp
                 )
-                
+
                 return {
                     "access_token": "",
                     "refresh_token": "",
@@ -140,26 +141,40 @@ class AuthService:
                         "email": user.email,
                         "first_name": user.first_name,
                         "last_name": user.last_name,
+                        "user_role": user.user_role.value,
+                        "gender": user.gender,
+                        "phone_number": user.phone_number,
+                        "location": user.location,
+                        "job_title": user.job_title,
+                        "email_confirmed": user.email_confirmed,
+                        "is_active": user.is_active,
+                        "user_logged_In": user.user_logged_In,
+                        "last_logged_in_date": user.last_logged_in_date,
+                        "profile_image_URL": user.profile_image_URL,
+                        "created_at": user.created_at,
+                        "created_by": user.created_by,
+                        "last_modified_date": user.last_modified_date,
+                        "last_modified_by": user.last_modified_by,
                     }
                 }
-            
+
             # Generate tokens
             access_token = create_access_token({
                 "email": user.email,
                 "user_id": user.id,
                 "role": user.user_role.value
             })
-            
+
             refresh_token = create_refresh_token({
                 "email": user.email,
                 "user_id": user.id
             })
-            
+
             user.refresh_token = refresh_token
             user.refresh_token_expires = datetime.utcnow()
-            
+
             await self.db.commit()
-            
+
             # Log successful login
             await self.audit_service.log_audit(
                 audit_type=AuditTypeEnum.LOGIN,
@@ -169,7 +184,7 @@ class AuthService:
                 processor_email=user.email,
                 processed_by=f"{user.first_name} {user.last_name}"
             )
-            
+
             return {
                 "access_token": access_token,
                 "refresh_token": refresh_token,
@@ -182,14 +197,26 @@ class AuthService:
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "user_role": user.user_role.value,
+                    "gender": user.gender,
+                    "phone_number": user.phone_number,
+                    "location": user.location,
+                    "job_title": user.job_title,
+                    "email_confirmed": user.email_confirmed,
+                    "is_active": user.is_active,
+                    "user_logged_In": user.user_logged_In,
+                    "last_logged_in_date": user.last_logged_in_date,
+                    "profile_image_URL": user.profile_image_URL,
+                    "created_at": user.created_at,
+                    "created_by": user.created_by,
+                    "last_modified_date": user.last_modified_date,
+                    "last_modified_by": user.last_modified_by,
                 }
             }
-            
+
         except Exception as e:
             logger.error(f"Login error for {email}: {str(e)}")
             await self.db.rollback()
             raise
-    
     async def resend_otp(self, email: str):
         """Resend OTP to user"""
         try:
@@ -270,6 +297,19 @@ class AuthService:
                     "first_name": user.first_name,
                     "last_name": user.last_name,
                     "user_role": user.user_role.value,
+                        "gender": user.gender,
+                        "phone_number": user.phone_number,
+                        "location": user.location,
+                        "job_title": user.job_title,
+                        "email_confirmed": user.email_confirmed,
+                        "is_active": user.is_active,
+                        "user_logged_In": user.user_logged_In,
+                        "last_logged_in_date": user.last_logged_in_date,
+                        "profile_image_URL": user.profile_image_URL,
+                        "created_at": user.created_at,
+                        "created_by": user.created_by,
+                        "last_modified_date": user.last_modified_date,
+                        "last_modified_by": user.last_modified_by,
                 }
             }
             
@@ -390,6 +430,49 @@ class AuthService:
             await self.db.rollback()
             raise
     
+    async def new_user_change_password(self, email: str, old_password: str, new_password: str):
+        """Change password for authenticated user"""
+        try:
+            user = await get_user_by_email(self.db, email)
+            if not user:
+                raise UserNotFoundException()
+
+            # Verify old password
+            if not verify_password(old_password, user.hashed_password):
+                raise InvalidCredentialsException(
+                    "Current password is incorrect")
+
+            # Update password
+            user.hashed_password = get_password_hash(new_password)
+            user.default_password = False
+            user.last_password_changed_date = datetime.utcnow()
+
+            await self.db.commit()
+
+            # Send confirmation email
+            await send_password_changed_email(
+                to_email=user.email,
+                first_name=user.first_name or "User"
+            )
+
+            # Log password change
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.UPDATE,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}",
+                new_values='{"password": "changed"}'
+            )
+
+            logger.info(f"Password changed for user: {email}")
+
+        except Exception as e:
+            logger.error(f"Change password error: {str(e)}")
+            await self.db.rollback()
+            raise
+
     async def verify_email(self, email: str, token: str):
         """Verify user email"""
         try:
