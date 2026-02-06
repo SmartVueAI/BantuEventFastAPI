@@ -53,8 +53,15 @@ app.add_middleware(
 # Ensure static directories exist
 Path("static/profile_images").mkdir(parents=True, exist_ok=True)
 
+# At the top of your file
+# This gets /app from /app/app/main.py
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Then when mounting: # Static Files
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
 # Static Files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # SSRF Protection Middleware
 @app.middleware("http")
