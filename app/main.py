@@ -10,6 +10,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import time
+import mimetypes
 from loguru import logger
 from pathlib import Path
 
@@ -18,6 +19,9 @@ from app.core.logging_config import setup_logging
 
 # Setup logging
 setup_logging()
+
+# Add WebP MIME type support
+mimetypes.add_type("image/webp", ".webp")
 
 # Initialize FastAPI
 app = FastAPI(
@@ -50,11 +54,19 @@ app.add_middleware(
     allowed_hosts=settings.allowed_hosts_list,
 )
 
+
 # Ensure static directories exist
 Path("static/profile_images").mkdir(parents=True, exist_ok=True)
 
+# At the top of your file
+# This gets /app from /app/app/main.py
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Then when mounting: # Static Files
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+
 # Static Files
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # SSRF Protection Middleware
 @app.middleware("http")
