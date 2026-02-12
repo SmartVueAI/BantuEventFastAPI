@@ -20,15 +20,37 @@ class UserCreate(UserBase):
     pass
 
 
+class AdminUserCreate(UserBase):
+    use_otp_enabled: Optional[bool] = None
+
 class UserUpdate(BaseModel):
     """Schema for updating user details"""
     id: int
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
     phone_number: Optional[str] = Field(None, max_length=20)
+    whatsapp_number: Optional[str] = Field(None, max_length=50)
     location: Optional[str] = Field(None, max_length=255)
     job_title: Optional[str] = Field(None, max_length=100)
+    job_description: Optional[str] = Field(None, max_length=1000)
+    gender: Optional[GenderEnum] = None
     is_active: Optional[bool] = None
+
+
+class AdminUserUpdate(BaseModel):
+    """Schema for updating user details"""
+    id: int
+    first_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    phone_number: Optional[str] = Field(None, max_length=20)
+    whatsapp_number: Optional[str] = Field(None, max_length=50)
+    location: Optional[str] = Field(None, max_length=50)
+    job_title: Optional[str] = Field(None, max_length=100)
+    job_description: Optional[str] = Field(None, max_length=1000)
+    gender: Optional[GenderEnum] = None
+    user_role: Optional[UserRoleEnum] = None
+    use_otp_enabled: Optional[bool] = False
+    is_active: Optional[bool] = False
 
 
 class UserResponse(BaseModel):

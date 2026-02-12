@@ -30,6 +30,8 @@ from app.services.audit_service import AuditService
 from app.exceptions import (
     UserNotFoundException,
     InvalidCredentialsException,
+    UserNotActiveException,
+    DefaultPasswordException,
     AccountLockedException,
     EmailNotConfirmedException,
     InvalidOTPException,
@@ -60,9 +62,17 @@ class AuthService:
             if not user:
                 raise InvalidCredentialsException()
 
+            # Check if user is active
+            if not user.is_active:
+                raise UserNotActiveException()
+
             # Check if email is confirmed
             if not user.email_confirmed:
                 raise EmailNotConfirmedException()
+
+            # Check if user is using default password
+            if user.default_password:
+                raise DefaultPasswordException()
 
             # Check if account is locked
             if user.lockout_enabled:

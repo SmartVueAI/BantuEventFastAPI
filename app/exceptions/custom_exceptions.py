@@ -22,6 +22,20 @@ class InvalidCredentialsException(HTTPException):
         super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
 
 
+class DefaultPasswordException(HTTPException):
+    """Exception raised when login credentials are invalid"""
+
+    def __init__(self, detail: str = "User must change default password before logging in"):
+        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
+class UserNotActiveException(HTTPException):
+    """Exception raised when login credentials are invalid"""
+
+    def __init__(self, detail: str = "Invalid email or password"):
+        super().__init__(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
 class AccountLockedException(HTTPException):
     """Exception raised when account is locked"""
     def __init__(self, detail: str = "Account is locked due to multiple failed login attempts"):
