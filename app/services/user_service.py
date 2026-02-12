@@ -17,7 +17,7 @@ from app.crud.user import (
     check_email_exists as crud_check_email_exists,
     get_user_by_id,
 )
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import UserCreate, UserUpdate, AdminUserUpdate, UserResponse
 from app.services.audit_service import AuditService
 from app.services.image_service import ImageService
 from app.services.email_service import send_user_creation_email
@@ -29,6 +29,14 @@ from app.exceptions import (
 from app.enums import AuditTypeEnum, UserRoleEnum
 import math
 
+import json
+from sqlalchemy.inspection import inspect
+
+
+def sqlalchemy_to_dict(obj):
+    """Convert SQLAlchemy object to dict"""
+    return {c.key: getattr(obj, c.key)
+            for c in inspect(obj).mapper.column_attrs}
 
 class UserService:
     """User business logic service"""
@@ -51,29 +59,6 @@ class UserService:
             
             # 3. Send User Creation Email (in background task) https://sonmahair.com
             # email_confirmation_link = f"{settings.FRONTEND_BASE_URL}/verify-email?email={new_user.email}&token={verification_token}"
-            # email_confirmation_link = f"https://sonmahair.com/verify-email?email={user.email}&token={user.verification_token}"
-            # email_subject = "Welcome to SmartVue! Confirm Your Account"
-            # email_html_content = f"""
-            #     <html>
-            #         <body>
-            #             <p>Dear {user.first_name},</p>
-            #             <p>Welcome to SmartVue! Your account has been successfully created.</p>
-            #             <p>Your email: <strong>{user.email}</strong></p>
-            #             <p>Your temporary password: <strong>{generated_password}</strong></p>
-            #             <p>Please click the link below to confirm your email address and activate your account:</p>
-            #             <p><a href="{email_confirmation_link}">Confirm Your Email</a></p>
-            #             <p>For security reasons, we recommend changing your temporary password after your first login.</p>
-            #             <p>If you did not request this, please ignore this email.</p>
-            #             <p>Best regards,</p>
-            #             <p>The SmartVue Team</p>
-            #         </body>
-            #     </html>
-            # """
-
-            # print(
-            #     f"User: '{user.email}' email confirm link is: '{email_confirmation_link}'")
-            # background_tasks.add_task(
-            # await email_service.send_email(str(user.email), email_subject, email_html_content)
 
             # Send creation email
             await send_user_creation_email(
@@ -81,7 +66,6 @@ class UserService:
                 first_name=user.first_name or "User",
                 verification_token=user.verification_token,
                 generated_password=generated_password
-                # generated_password=email_html_content
             )
             
             # Log audit
@@ -202,25 +186,69 @@ class UserService:
             old_user = await get_user_by_id(self.db, user_id)
             if not old_user:
                 raise UserNotFoundException()
-            
-            old_values = {
-                "first_name": old_user.first_name,
-                "last_name": old_user.last_name,
-                "phone_number": old_user.phone_number,
-                "location": old_user.location,
-            }
+
+            # default=str handles enums and dates
+            old_values = json.dumps(sqlalchemy_to_dict(old_user), default=str)
+
+            # Update user
+            user = await crud_update_user(self.db, user_id, user_data, modified_by)
+            if not user:
+                raise UserNotFoundException()
+
+            # Only include fields that were updated
+            new_values = user_data.model_dump(exclude_unset=True)
+
+            await self.db.commit()
+
+            # Log audit
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.UPDATE,
+                user_role=user.user_role,
+                module_name="User Management",
+                table_name="users",
+                processor_email=modified_by,
+                processed_by=modified_by,
+                old_values=json.dumps(old_values),
+                new_values=json.dumps(new_values)
+            )
+
+            return UserResponse.model_validate(user)
+
+        except Exception as e:
+            logger.error(f"Update user error: {str(e)}")
+            await self.db.rollback()
+            raise
+
+    async def update_user(
+        self, user_id: int, user_data: AdminUserUpdate, modified_by: str, current_user: dict
+    ) -> UserResponse:
+        """Update user"""
+        try:
+            # Check permissions
+            if current_user["id"] != user_id:
+                # Only staff+ can update other users
+                if current_user["user_role"] not in [
+                    UserRoleEnum.STAFF.value,
+                    UserRoleEnum.SUPERVISOR.value,
+                    UserRoleEnum.SUPERADMIN.value,
+                ]:
+                    raise InsufficientPermissionsException()
+
+            # Get old values
+            old_user = await get_user_by_id(self.db, user_id)
+            if not old_user:
+                raise UserNotFoundException()
+
+            # default=str handles enums and dates
+            old_values = json.dumps(sqlalchemy_to_dict(old_user), default=str)
             
             # Update user
             user = await crud_update_user(self.db, user_id, user_data, modified_by)
             if not user:
                 raise UserNotFoundException()
             
-            new_values = {
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "phone_number": user.phone_number,
-                "location": user.location,
-            }
+            # Only include fields that were updated
+            new_values = user_data.model_dump(exclude_unset=True)
             
             await self.db.commit()
             

@@ -11,13 +11,17 @@ from app.dependencies.auth import get_current_user, require_staff
 from app.dependencies.pagination import PaginationParams
 from app.schemas.user import (
     UserCreate,
+    AdminUserCreate,
     UserUpdate,
+    AdminUserUpdate,
     UserResponse,
     EmailCheckResponse,
     UserCountResponse,
 )
 from app.schemas.common import PaginatedResponse, SuccessResponse
 from app.services.user_service import UserService
+
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -34,7 +38,6 @@ router = APIRouter()
     - Logs audit trail
     - Returns user details (excluding sensitive data)
     
-    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
     """,
     response_description="Successfully created user",
     responses={
@@ -59,6 +62,59 @@ router = APIRouter()
 )
 async def create_user(
     user_data: UserCreate,
+    # current_user: dict = Depends(require_staff),
+    db: AsyncSession = Depends(get_db)
+):
+    """Create a new user"""
+    try:
+        user_service = UserService(db)
+        user = await user_service.create_user(
+            user_data=user_data,
+            created_by=settings.SYSTEM_EMAIL  # current_user["email"]
+        )
+        return user
+    except Exception as e:
+        logger.error(f"Create user error: {str(e)}")
+        raise
+
+
+@router.post(
+    "/admin-create",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create new user by admin",
+    description="""
+    Create a new user account with the following features:
+    - Generates secure random password
+    - Sends email confirmation link
+    - Logs audit trail
+    - Returns user details (excluding sensitive data)
+
+    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
+    """,
+    response_description="Successfully created user",
+    responses={
+        201: {
+            "description": "User created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "user@example.com",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "user_role": "customer",
+                        "is_active": True
+                    }
+                }
+            }
+        },
+        409: {"description": "Email already exists"},
+        422: {"description": "Validation error"},
+    }
+)
+async def admin_create_user(
+    user_data: AdminUserCreate,
     current_user: dict = Depends(require_staff),
     db: AsyncSession = Depends(get_db)
 ):
@@ -73,7 +129,6 @@ async def create_user(
     except Exception as e:
         logger.error(f"Create user error: {str(e)}")
         raise
-
 
 @router.get(
     "/check-email/{email}",
@@ -258,6 +313,44 @@ async def upload_profile_image(
 )
 async def update_user(
     user_data: UserUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update user details"""
+    try:
+        user_service = UserService(db)
+        user = await user_service.update_user(
+            user_id=user_data.id,
+            user_data=user_data,
+            modified_by=current_user["email"],
+            current_user=current_user
+        )
+        return user
+    except Exception as e:
+        logger.error(f"Update user error: {str(e)}")
+        raise
+
+
+@router.put(
+    "/admin-update",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update user details",
+    description="""
+    Update user information.
+    
+    **Authentication required**
+    
+    Note: User can only update their own profile unless they have STAFF+ role.
+    """,
+    responses={
+        200: {"description": "User updated successfully"},
+        403: {"description": "Insufficient permissions"},
+        404: {"description": "User not found"},
+    }
+)
+async def admin_update_user(
+    user_data: AdminUserUpdate,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
