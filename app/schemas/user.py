@@ -21,7 +21,7 @@ class UserCreate(UserBase):
 
 
 class AdminUserCreate(UserBase):
-    use_otp_enabled: Optional[bool] = None
+    use_otp_enabled: Optional[bool] = False
 
 class UserUpdate(BaseModel):
     """Schema for updating user details"""

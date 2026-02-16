@@ -176,7 +176,6 @@ class UserService:
             if current_user["id"] != user_id:
                 # Only staff+ can update other users
                 if current_user["user_role"] not in [
-                    UserRoleEnum.STAFF.value,
                     UserRoleEnum.SUPERVISOR.value,
                     UserRoleEnum.SUPERADMIN.value,
                 ]:
@@ -228,7 +227,6 @@ class UserService:
             if current_user["id"] != user_id:
                 # Only staff+ can update other users
                 if current_user["user_role"] not in [
-                    UserRoleEnum.STAFF.value,
                     UserRoleEnum.SUPERVISOR.value,
                     UserRoleEnum.SUPERADMIN.value,
                 ]:
