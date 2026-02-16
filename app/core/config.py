@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,https://sonmahair.com"
     
     @property
     def cors_origins_list(self) -> List[str]:
