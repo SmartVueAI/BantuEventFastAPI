@@ -121,7 +121,7 @@ async def admin_create_user(
     """Create a new user"""
     try:
         user_service = UserService(db)
-        user = await user_service.create_user(
+        user = await user_service.admin_create_user(
             user_data=user_data,
             created_by=current_user["email"]
         )
@@ -220,6 +220,159 @@ async def get_active_users(
     except Exception as e:
         logger.error(f"Get active users error: {str(e)}")
         raise
+
+
+@router.get(
+    "/active-customers",
+    response_model=PaginatedResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List active customers",
+    description="""
+    Get paginated list of all active customers.
+    
+    Supports:
+    - Pagination (page, page_size)
+    - Sorting (sort_by, sort_order)
+    
+    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
+    """,
+    responses={
+        200: {"description": "List of active users"},
+    }
+)
+async def get_active_customers(
+    pagination: PaginationParams = Depends(),
+    current_user: dict = Depends(require_staff),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated list of active customers"""
+    try:
+        user_service = UserService(db)
+        result = await user_service.get_active_customers(
+            skip=pagination.skip,
+            limit=pagination.page_size,
+            sort_by=pagination.sort_by,
+            sort_order=pagination.sort_order
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get active users error: {str(e)}")
+        raise
+
+
+@router.get(
+    "/inactive-customers",
+    response_model=PaginatedResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List inactive customers",
+    description="""
+    Get paginated list of all inactive customers.
+    
+    Supports:
+    - Pagination (page, page_size)
+    - Sorting (sort_by, sort_order)
+    
+    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
+    """,
+    responses={
+        200: {"description": "List of inactive customers"},
+    }
+)
+async def get_inactive_customers(
+    pagination: PaginationParams = Depends(),
+    current_user: dict = Depends(require_staff),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated list of inactive customers"""
+    try:
+        user_service = UserService(db)
+        result = await user_service.get_inactive_customers(
+            skip=pagination.skip,
+            limit=pagination.page_size,
+            sort_by=pagination.sort_by,
+            sort_order=pagination.sort_order
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get active users error: {str(e)}")
+        raise
+
+
+@router.get(
+    "/active-other-users",
+    response_model=PaginatedResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List active other users",
+    description="""
+    Get paginated list of all active other users.
+    
+    Supports:
+    - Pagination (page, page_size)
+    - Sorting (sort_by, sort_order)
+    
+    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
+    """,
+    responses={
+        200: {"description": "List of active other users"},
+    }
+)
+async def get_active_other_users(
+    pagination: PaginationParams = Depends(),
+    current_user: dict = Depends(require_staff),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated list of active other-users"""
+    try:
+        user_service = UserService(db)
+        result = await user_service.get_active_other_users(
+            skip=pagination.skip,
+            limit=pagination.page_size,
+            sort_by=pagination.sort_by,
+            sort_order=pagination.sort_order
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get active users error: {str(e)}")
+        raise
+
+
+@router.get(
+    "/inactive-other-users",
+    response_model=PaginatedResponse[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List inactive other-users",
+    description="""
+    Get paginated list of all inactive other-users.
+    
+    Supports:
+    - Pagination (page, page_size)
+    - Sorting (sort_by, sort_order)
+    
+    **Required permissions**: STAFF, SUPERVISOR, or SUPERADMIN role
+    """,
+    responses={
+        200: {"description": "List of inactive other-users"},
+    }
+)
+async def get_inactive_other_users(
+    pagination: PaginationParams = Depends(),
+    current_user: dict = Depends(require_staff),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get paginated list of inactive other_users"""
+    try:
+        user_service = UserService(db)
+        result = await user_service.get_inactive_other_users(
+            skip=pagination.skip,
+            limit=pagination.page_size,
+            sort_by=pagination.sort_by,
+            sort_order=pagination.sort_order
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Get active users error: {str(e)}")
+        raise
+
 
 
 @router.get(
@@ -335,7 +488,7 @@ async def update_user(
     "/admin-update",
     response_model=UserResponse,
     status_code=status.HTTP_200_OK,
-    summary="Update user details",
+    summary="Admin Update user details",
     description="""
     Update user information.
     
@@ -357,7 +510,7 @@ async def admin_update_user(
     """Update user details"""
     try:
         user_service = UserService(db)
-        user = await user_service.update_user(
+        user = await user_service.admin_update_user(
             user_id=user_data.id,
             user_data=user_data,
             modified_by=current_user["email"],
@@ -380,7 +533,6 @@ async def admin_update_user(
     - Last name
     - Email
     - Phone number
-    - Created by
     
     Supports pagination and sorting.
     
