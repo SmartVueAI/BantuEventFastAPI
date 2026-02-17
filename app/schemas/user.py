@@ -65,6 +65,7 @@ class UserResponse(BaseModel):
     user_role: UserRoleEnum
     job_title: Optional[str]
     email_confirmed: bool
+    use_otp_enabled: Optional[bool] = False
     is_active: bool
     user_logged_In: bool
     last_logged_in_date: Optional[datetime]
