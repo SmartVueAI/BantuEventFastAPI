@@ -15,6 +15,7 @@ from app.utils import (
     generate_random_password,
     generate_verification_token,
     generate_security_stamp,
+    generate_support_code,
 )
 from app.enums import UserRoleEnum
 
@@ -55,6 +56,34 @@ async def check_email_exists(db: AsyncSession, email: str) -> bool:
         raise
 
 
+async def check_support_code_exists(db: AsyncSession, code: str) -> bool:
+    """Check whether a customer_support_code is already in use by an active user"""
+    try:
+        result = await db.execute(
+            select(User).where(
+                User.customer_support_code == code,
+                User.is_deleted == False
+            )
+        )
+        return result.scalar_one_or_none() is not None
+    except Exception as e:
+        logger.error(f"Error checking support code existence: {str(e)}")
+        raise
+
+
+async def _generate_unique_support_code(db: AsyncSession, max_retries: int = 5) -> str:
+    """Generate a support code that is unique across all active users"""
+    for attempt in range(1, max_retries + 1):
+        code = generate_support_code()
+        if not await check_support_code_exists(db, code):
+            return code
+        logger.warning(f"Support code collision on attempt {attempt}: {code}")
+    raise RuntimeError(
+        "Failed to generate a unique customer support code after "
+        f"{max_retries} attempts. Please try again."
+    )
+
+
 async def create_user(
     db: AsyncSession,
     user_data: UserCreate,
@@ -70,6 +99,7 @@ async def create_user(
         hashed_password = get_password_hash(generated_password)
         verification_token = generate_verification_token()
         security_stamp = generate_security_stamp()
+        support_code = await _generate_unique_support_code(db)
 
         # Create user instance
         user = User(
@@ -87,6 +117,7 @@ async def create_user(
             security_stamp=security_stamp,
             default_password=True,
             email_confirmed=False,
+            customer_support_code=support_code,
             is_active=True,
             created_by=created_by,
         )
@@ -118,6 +149,7 @@ async def admin_create_user(
         hashed_password = get_password_hash(generated_password)
         verification_token = generate_verification_token()
         security_stamp = generate_security_stamp()
+        support_code = await _generate_unique_support_code(db)
 
         # Create user instance
         user = User(
@@ -136,6 +168,8 @@ async def admin_create_user(
             default_password=True,
             email_confirmed=False,
             use_otp_enabled=True if user_data.use_otp_enabled else False,
+            branch_code=user_data.branch_code,
+            customer_support_code=support_code,
             is_active=True,
             created_by=created_by,
         )
@@ -228,6 +262,8 @@ async def admin_update_user(
             user.user_role = user_data.user_role
         if user_data.use_otp_enabled is not None:
             user.use_otp_enabled = user_data.use_otp_enabled
+        if user_data.branch_code is not None:
+            user.branch_code = user_data.branch_code
 
         user.last_modified_by = modified_by
 

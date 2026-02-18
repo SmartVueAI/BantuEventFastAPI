@@ -7,6 +7,7 @@ from app.utils.token import (
     generate_otp,
     generate_guid,
     generate_security_stamp,
+    generate_support_code,
 )
 from app.utils.image_utils import (
     ensure_image_directory,
@@ -23,6 +24,7 @@ __all__ = [
     "generate_otp",
     "generate_guid",
     "generate_security_stamp",
+    "generate_support_code",
     "ensure_image_directory",
     "generate_unique_filename",
     "validate_image_type",
