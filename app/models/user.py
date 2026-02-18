@@ -26,10 +26,13 @@ class User(BaseDBModel):
     phone_number = Column(String(50), nullable=True)
     whatsapp_number = Column(String(50), nullable=True)
     location = Column(String(50), nullable=True)
+    branch_code = Column(String(50), nullable=True)
+    customer_support_code = Column(String(50), nullable=True)
     
     # OTP Configuration
     otp = Column(String(50), nullable=True)
     use_otp_enabled = Column(Boolean, default=False, nullable=False)
+    otp_expires = Column(DateTime, nullable=True)
     
     # Account Lockout
     lockout_date_time = Column(DateTime, nullable=True)
