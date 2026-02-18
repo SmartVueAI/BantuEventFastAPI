@@ -150,11 +150,20 @@ class ResetPasswordRequest(BaseModel):
     token: str = Field(..., min_length=32)
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v):
+        is_valid, error_msg = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        return v
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v, info):
+        if "new_password" in info.data and v != info.data["new_password"]:
+            raise ValueError("Passwords do not match")
         return v
 
 
@@ -165,22 +174,41 @@ class NewUserChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v):
+        is_valid, error_msg = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(error_msg)
         return v
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v, info):
+        if "new_password" in info.data and v != info.data["new_password"]:
+            raise ValueError("Passwords do not match")
+        return v
+
 
 class ChangePasswordRequest(BaseModel):
     """Schema for change password request"""
     old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
-    
-    @validator('confirm_password')
-    def passwords_match(cls, v, values):
-        if 'new_password' in values and v != values['new_password']:
-            raise ValueError('Passwords do not match')
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v):
+        is_valid, error_msg = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(error_msg)
+        return v
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v, info):
+        if "new_password" in info.data and v != info.data["new_password"]:
+            raise ValueError("Passwords do not match")
         return v
 
 
@@ -210,3 +238,8 @@ class MessageResponse(BaseModel):
     """Schema for simple message response"""
     message: str
     detail: Optional[str] = None
+
+
+class GenerateAccessTokenRequest(BaseModel):
+    """Schema for generating a new access token from a refresh token"""
+    refresh_token: str = Field(..., min_length=1)

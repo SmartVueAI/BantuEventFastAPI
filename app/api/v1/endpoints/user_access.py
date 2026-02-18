@@ -18,6 +18,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
     ValidateGUIDRequest,
     ValidateGUIDResponse,
+    GenerateAccessTokenRequest,
 )
 from app.schemas.common import SuccessResponse
 from app.services.auth_service import AuthService
@@ -336,4 +337,77 @@ async def validate_guid(
         return ValidateGUIDResponse(valid=is_valid)
     except Exception as e:
         logger.error(f"Validate GUID error: {str(e)}")
+        raise
+
+
+@router.post(
+    "/logout",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="User logout",
+    description="""
+    Logout the authenticated user.
+
+    Clears the user's GUID and refresh token from the database so that
+    existing tokens can no longer be used to generate new access tokens.
+
+    **Authentication required**
+    """,
+    responses={
+        200: {"description": "Logged out successfully"},
+        401: {"description": "Not authenticated"},
+        404: {"description": "User not found"},
+    }
+)
+async def logout(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Logout the authenticated user"""
+    try:
+        auth_service = AuthService(db)
+        await auth_service.logout(
+            user_id=current_user["id"],
+            user_email=current_user["email"]
+        )
+        return SuccessResponse(message="User logged out successfully.")
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        raise
+
+
+@router.post(
+    "/generate-access-token",
+    response_model=SuccessResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate new access token",
+    description="""
+    Generate a fresh access token using a valid refresh token.
+
+    Use this endpoint when the access token has expired.
+    The refresh token remains unchanged until it expires or the user logs out.
+
+    **No authentication required** — accepts the refresh token in the request body.
+    """,
+    responses={
+        200: {"description": "Access token generated successfully"},
+        401: {"description": "Invalid or expired refresh token"},
+    }
+)
+async def generate_access_token(
+    request: GenerateAccessTokenRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate a new access token from a valid refresh token"""
+    try:
+        auth_service = AuthService(db)
+        result = await auth_service.generate_access_token(
+            refresh_token=request.refresh_token
+        )
+        return SuccessResponse(
+            message=result["message"],
+            data=result["data"]
+        )
+    except Exception as e:
+        logger.error(f"Generate access token error: {str(e)}")
         raise
