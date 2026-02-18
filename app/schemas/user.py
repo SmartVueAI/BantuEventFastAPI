@@ -22,6 +22,7 @@ class UserCreate(UserBase):
 
 class AdminUserCreate(UserBase):
     use_otp_enabled: Optional[bool] = False
+    branch_code: Optional[str] = Field(None, max_length=50)
 
 class UserUpdate(BaseModel):
     """Schema for updating user details"""
@@ -51,6 +52,7 @@ class AdminUserUpdate(BaseModel):
     user_role: Optional[UserRoleEnum] = None
     use_otp_enabled: Optional[bool] = False
     is_active: Optional[bool] = False
+    branch_code: Optional[str] = Field(None, max_length=50)
 
 
 class UserResponse(BaseModel):
@@ -70,6 +72,8 @@ class UserResponse(BaseModel):
     user_logged_In: bool
     last_logged_in_date: Optional[datetime]
     profile_image_URL: Optional[str]
+    branch_code: Optional[str]
+    customer_support_code: Optional[str]
     created_at: datetime
     created_by: Optional[str]
     last_modified_date: Optional[datetime]

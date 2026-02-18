@@ -1,7 +1,7 @@
 """
 Authentication Service
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import HTTPException
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ from app.exceptions import (
     InvalidTokenException,
 )
 from app.enums import AuditTypeEnum
-from app.core.constants import MAX_LOGIN_ATTEMPTS
+from app.core.constants import MAX_LOGIN_ATTEMPTS, OTP_EXPIRE_MINUTES
 
 
 class AuthService:
@@ -133,6 +133,7 @@ class AuthService:
                 # Generate and send OTP
                 otp = generate_otp()
                 user.otp = otp
+                user.otp_expires = datetime.utcnow() + timedelta(minutes=OTP_EXPIRE_MINUTES)
 
                 await self.db.commit()
 
@@ -240,7 +241,8 @@ class AuthService:
             # Generate new OTP
             otp = generate_otp()
             user.otp = otp
-            
+            user.otp_expires = datetime.utcnow() + timedelta(minutes=OTP_EXPIRE_MINUTES)
+
             await self.db.commit()
             
             # Send OTP email
@@ -264,12 +266,20 @@ class AuthService:
             if not user:
                 raise UserNotFoundException()
             
+            # Check OTP expiry before comparing value
+            if user.otp_expires is None or datetime.utcnow() > user.otp_expires:
+                raise HTTPException(
+                    status_code=400,
+                    detail="OTP has expired. Please request a new OTP."
+                )
+
             # Verify OTP
             if user.otp != otp:
                 raise InvalidOTPException()
-            
-            # Clear OTP
+
+            # Clear OTP and expiry to prevent reuse
             user.otp = None
+            user.otp_expires = None
             
             # Generate tokens
             access_token = create_access_token({
