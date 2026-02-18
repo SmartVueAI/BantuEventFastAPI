@@ -2,15 +2,18 @@
 Authentication Service
 """
 from datetime import datetime
+from fastapi import HTTPException
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
 
-from app.crud.user import get_user_by_email, get_user_by_id
+from app.crud.user import get_user_by_email, get_user_by_id, get_user_by_refresh_token, logout_user
 from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
     create_refresh_token,
+    decode_token,
 )
 from app.utils import (
     generate_otp,
@@ -365,11 +368,20 @@ class AuthService:
             # Verify token
             if user.verification_token != token:
                 raise InvalidTokenException()
-            
+
+            # Prevent password reuse
+            if verify_password(new_password, user.hashed_password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="New password must be different from your current password."
+                )
+
             # Update password
             user.hashed_password = get_password_hash(new_password)
             user.default_password = False
             user.last_password_changed_date = datetime.utcnow()
+            user.last_modified_by = user.email
+            user.last_modified_date = datetime.utcnow()
             user.verification_token = None
             
             await self.db.commit()
@@ -408,20 +420,29 @@ class AuthService:
             # Verify old password
             if not verify_password(old_password, user.hashed_password):
                 raise InvalidCredentialsException("Current password is incorrect")
-            
+
+            # Prevent password reuse
+            if verify_password(new_password, user.hashed_password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="New password must be different from your current password."
+                )
+
             # Update password
             user.hashed_password = get_password_hash(new_password)
             user.default_password = False
             user.last_password_changed_date = datetime.utcnow()
-            
+            user.last_modified_by = user.email
+            user.last_modified_date = datetime.utcnow()
+
             await self.db.commit()
-            
+
             # Send confirmation email
             await send_password_changed_email(
                 to_email=user.email,
                 first_name=user.first_name or "User"
             )
-            
+
             # Log password change
             await self.audit_service.log_audit(
                 audit_type=AuditTypeEnum.UPDATE,
@@ -432,14 +453,14 @@ class AuthService:
                 processed_by=f"{user.first_name} {user.last_name}",
                 new_values='{"password": "changed"}'
             )
-            
+
             logger.info(f"Password changed for user: {user_id}")
-            
+
         except Exception as e:
             logger.error(f"Change password error: {str(e)}")
             await self.db.rollback()
             raise
-    
+
     async def new_user_change_password(self, email: str, old_password: str, new_password: str):
         """Change password for authenticated user"""
         try:
@@ -452,10 +473,19 @@ class AuthService:
                 raise InvalidCredentialsException(
                     "Current password is incorrect")
 
+            # Prevent password reuse
+            if verify_password(new_password, user.hashed_password):
+                raise HTTPException(
+                    status_code=400,
+                    detail="New password must be different from your current password."
+                )
+
             # Update password
             user.hashed_password = get_password_hash(new_password)
             user.default_password = False
             user.last_password_changed_date = datetime.utcnow()
+            user.last_modified_by = user.email
+            user.last_modified_date = datetime.utcnow()
 
             await self.db.commit()
 
@@ -544,9 +574,99 @@ class AuthService:
             user = await get_user_by_email(self.db, email)
             if not user:
                 return False
-            
+
             return user.user_GUID == guid
-            
+
         except Exception as e:
             logger.error(f"Validate GUID error: {str(e)}")
             return False
+
+    async def logout(self, user_id: int, user_email: str):
+        """
+        Logout user by clearing their GUID and refresh token.
+        This invalidates the server-side session so existing refresh tokens
+        can no longer be used to generate new access tokens.
+        """
+        try:
+            user = await logout_user(self.db, user_id, modified_by=user_email)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found.")
+
+            await self.db.commit()
+
+            # Log logout
+            await self.audit_service.log_audit(
+                audit_type=AuditTypeEnum.LOGOUT,
+                user_role=user.user_role,
+                module_name="Authentication",
+                table_name="users",
+                processor_email=user.email,
+                processed_by=f"{user.first_name} {user.last_name}",
+                new_values='{"status": "logged_out"}'
+            )
+
+            logger.info(f"User logged out: {user_email}")
+
+        except Exception as e:
+            logger.error(f"Logout error for user {user_id}: {str(e)}")
+            await self.db.rollback()
+            raise
+
+    async def generate_access_token(self, refresh_token: str) -> dict:
+        """
+        Generate a new access token from a valid refresh token.
+        Does not rotate the refresh token.
+        """
+        try:
+            # Look up user by refresh token
+            user = await get_user_by_refresh_token(self.db, refresh_token)
+            if not user:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired refresh token."
+                )
+
+            # Verify the refresh token is still valid (decode + check expiry)
+            try:
+                payload = decode_token(refresh_token)
+            except HTTPException:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired refresh token."
+                )
+
+            if payload.get("type") != "refresh":
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid or expired refresh token."
+                )
+
+            if not user.is_active:
+                raise HTTPException(
+                    status_code=403,
+                    detail="User account is inactive."
+                )
+
+            # Generate new access token
+            access_token = create_access_token({
+                "email": user.email,
+                "user_id": user.id,
+                "role": user.user_role.value
+            })
+
+            logger.info(f"Access token generated for user: {user.email}")
+
+            return {
+                "success": True,
+                "message": "Access token generated successfully.",
+                "data": {
+                    "access_token": access_token,
+                    "token_type": "bearer"
+                }
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Generate access token error: {str(e)}")
+            raise
