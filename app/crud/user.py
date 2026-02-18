@@ -2,6 +2,7 @@
 User CRUD Operations
 """
 from re import U
+from datetime import datetime
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -454,6 +455,45 @@ async def count_active_users(db: AsyncSession) -> int:
         return result or 0
     except Exception as e:
         logger.error(f"Error counting active users: {str(e)}")
+        raise
+
+
+async def get_user_by_refresh_token(db: AsyncSession, refresh_token: str) -> Optional[User]:
+    """Get user by refresh token"""
+    try:
+        result = await db.execute(
+            select(User).where(
+                User.refresh_token == refresh_token,
+                User.is_deleted == False
+            )
+        )
+        return result.scalar_one_or_none()
+    except Exception as e:
+        logger.error(f"Error getting user by refresh token: {str(e)}")
+        raise
+
+
+async def logout_user(db: AsyncSession, user_id: int, modified_by: str) -> Optional[User]:
+    """Invalidate user session by clearing GUID and refresh token"""
+    try:
+        user = await get_user_by_id(db, user_id)
+        if not user:
+            return None
+
+        user.user_GUID = None
+        user.refresh_token = None
+        user.user_logged_In = False
+        user.last_modified_by = modified_by
+        user.last_modified_date = datetime.utcnow()
+
+        await db.flush()
+        await db.refresh(user)
+
+        logger.info(f"User logged out successfully: {user.email}")
+        return user
+
+    except Exception as e:
+        logger.error(f"Error logging out user {user_id}: {str(e)}")
         raise
 
 
