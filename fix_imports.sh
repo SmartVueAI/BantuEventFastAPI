@@ -17,7 +17,7 @@ NC='\033[0m' # No Color
 # Check if we're in the right directory
 if [ ! -f "app/main.py" ]; then
     echo -e "${RED}❌ Error: Not in project root directory${NC}"
-    echo "Please run this script from: ~/SonmaHairAPI"
+    echo "Please run this script from: ~/BantuEventAPI"
     exit 1
 fi
 

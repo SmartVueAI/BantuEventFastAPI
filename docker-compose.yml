@@ -24,7 +24,7 @@ services:
     expose:
       - "8000"
     ports:
-      - "8002:8000"
+      - "8003:8000"
     environment:
       - DATABASE_URL=${DATABASE_URL}  # Use the full URL from .env
       - REDIS_URL=redis://redis:6379/0

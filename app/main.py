@@ -27,7 +27,7 @@ mimetypes.add_type("image/webp", ".webp")
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Sonma Hair E-Commerce Platform API",
+    description="Bantu Event Platform API",
     docs_url="/documentation",
     redoc_url="/redoc",
     openapi_url="/api/openapi.json",
