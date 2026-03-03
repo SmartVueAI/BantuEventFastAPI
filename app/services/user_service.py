@@ -63,7 +63,7 @@ class UserService:
             # Create user
             user, generated_password = await crud_create_user(self.db, user_data, created_by)
             
-            # 3. Send User Creation Email (in background task) https://sonmahair.com
+            # 3. Send User Creation Email (in background task) https://bantuevents.com
             # email_confirmation_link = f"{settings.FRONTEND_BASE_URL}/verify-email?email={new_user.email}&token={verification_token}"
 
             # Send creation email
@@ -109,7 +109,7 @@ class UserService:
             # Create user
             user, generated_password = await crud_admin_create_user(self.db, user_data, created_by)
 
-            # 3. Send User Creation Email (in background task) https://sonmahair.com
+            # 3. Send User Creation Email (in background task) https://bantuevents.com
             # email_confirmation_link = f"{settings.FRONTEND_BASE_URL}/verify-email?email={new_user.email}&token={verification_token}"
 
             # Send creation email
