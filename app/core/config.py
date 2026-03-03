@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str
-    ALLOWED_HOSTS: str = "localhost,127.0.0.1"
+    ALLOWED_HOSTS: str = "localhost,127.0.0.1,https://bantuevents.com,https://mainapi.bantuevents.com"
     
     @property
     def allowed_hosts_list(self) -> List[str]:
