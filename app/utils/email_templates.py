@@ -102,7 +102,7 @@ You are receiving this email as a registered user of {app_name}. This is a requi
 
 {app_name}
 Email: {settings.SMTP_SUPPORT_EMAIL}
-Website: https://sonmahair.com
+Website: https://bantuevents.com
 
 This email was sent to: {to_email}
 This is a transactional email related to your account activity.
@@ -261,7 +261,7 @@ def get_user_creation_email_template(
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 600;">{app_name}</p>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #888;">
                     Email: <a href="mailto:{settings.SMTP_SUPPORT_EMAIL}" style="color: #D914BA; text-decoration: none;">{settings.SMTP_SUPPORT_EMAIL}</a> | 
-                    Website: <a href="https://sonmahair.com" style="color: #D914BA; text-decoration: none;">sonmahair.com</a>
+                    Website: <a href="https://bantuevents.com" style="color: #D914BA; text-decoration: none;">bantuevents.com</a>
                 </p>
                 <p style="margin: 0 0 5px 0; font-size: 11px; color: #999;">© 2026 {app_name}. All rights reserved.</p>
                 <p style="margin: 0 0 15px 0; font-size: 11px; color: #999; line-height: 1.6;">
@@ -336,7 +336,7 @@ Response Time: Within 24 hours
 
 {app_name}
 Email: {settings.SMTP_SUPPORT_EMAIL}
-Website: https://sonmahair.com
+Website: https://bantuevents.com
 
 This is a security-related transactional email sent to: {to_email}
 This email was sent because an OTP was requested for your account.
@@ -446,7 +446,7 @@ def get_otp_email_template(
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 600;">{app_name}</p>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #888;">
                     Email: <a href="mailto:{settings.SMTP_SUPPORT_EMAIL}" style="color: #2196F3; text-decoration: none;">{settings.SMTP_SUPPORT_EMAIL}</a> | 
-                    Website: <a href="https://sonmahair.com" style="color: #2196F3; text-decoration: none;">sonmahair.com</a>
+                    Website: <a href="https://bantuevents.com" style="color: #2196F3; text-decoration: none;">bantuevents.com</a>
                 </p>
                 <p style="margin: 0 0 5px 0; font-size: 11px; color: #999;">© 2026 {app_name}. All rights reserved.</p>
                 <p style="margin: 0 0 15px 0; font-size: 11px; color: #999; line-height: 1.6;">
@@ -536,7 +536,7 @@ Our support team is available to assist you with any account security questions 
 
 {app_name}
 Email: {settings.SMTP_SUPPORT_EMAIL}
-Website: https://sonmahair.com
+Website: https://bantuevents.com
 
 This is a security-related transactional email sent to: {to_email}
 You received this because a password reset was requested for your account.
@@ -656,7 +656,7 @@ def get_password_reset_email_template(
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 600;">{app_name}</p>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #888;">
                     Email: <a href="mailto:{settings.SMTP_SUPPORT_EMAIL}" style="color: #FF9800; text-decoration: none;">{settings.SMTP_SUPPORT_EMAIL}</a> | 
-                    Website: <a href="https://sonmahair.com" style="color: #FF9800; text-decoration: none;">sonmahair.com</a>
+                    Website: <a href="https://bantuevents.com" style="color: #FF9800; text-decoration: none;">bantuevents.com</a>
                 </p>
                 <p style="margin: 0 0 5px 0; font-size: 11px; color: #999;">© 2026 {app_name}. All rights reserved.</p>
                 <p style="margin: 0 0 15px 0; font-size: 11px; color: #999; line-height: 1.6;">
@@ -761,7 +761,7 @@ Our security team is available to assist with any account-related concerns.
 
 {app_name}
 Email: {settings.SMTP_SUPPORT_EMAIL}
-Website: https://sonmahair.com
+Website: https://bantuevents.com
 
 This is a security notification sent to: {to_email}
 You received this because your account password was changed.
@@ -916,7 +916,7 @@ def get_password_changed_email_template(
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 600;">{app_name}</p>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #888;">
                     Email: <a href="mailto:{settings.SMTP_SUPPORT_EMAIL}" style="color: #4CAF50; text-decoration: none;">{settings.SMTP_SUPPORT_EMAIL}</a> | 
-                    Website: <a href="https://sonmahair.com" style="color: #4CAF50; text-decoration: none;">sonmahair.com</a>
+                    Website: <a href="https://bantuevents.com" style="color: #4CAF50; text-decoration: none;">bantuevents.com</a>
                 </p>
                 <p style="margin: 0 0 5px 0; font-size: 11px; color: #999;">© 2026 {app_name}. All rights reserved.</p>
                 <p style="margin: 0 0 15px 0; font-size: 11px; color: #999; line-height: 1.6;">
@@ -1105,7 +1105,7 @@ Our team will:
 
 {app_name}
 Email: {settings.SMTP_SUPPORT_EMAIL}
-Website: https://sonmahair.com
+Website: https://bantuevents.com
 
 This is a critical security notification sent to: {to_email}
 You received this because multiple failed login attempts were detected on your account.
@@ -1332,7 +1332,7 @@ def get_account_locked_email_template(
                 <p style="margin: 0 0 8px 0; font-size: 13px; color: #666; font-weight: 600;">{app_name}</p>
                 <p style="margin: 0 0 15px 0; font-size: 12px; color: #888;">
                     Email: <a href="mailto:{settings.SMTP_SUPPORT_EMAIL}" style="color: #f44336; text-decoration: none;">{settings.SMTP_SUPPORT_EMAIL}</a> | 
-                    Website: <a href="https://sonmahair.com" style="color: #f44336; text-decoration: none;">sonmahair.com</a>
+                    Website: <a href="https://bantuevents.com" style="color: #f44336; text-decoration: none;">bantuevents.com</a>
                 </p>
                 <p style="margin: 0 0 5px 0; font-size: 11px; color: #999;">© 2026 {app_name}. All rights reserved.</p>
                 <p style="margin: 0 0 15px 0; font-size: 11px; color: #999; line-height: 1.6;">

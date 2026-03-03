@@ -101,7 +101,7 @@ RATE_LIMIT_GENERAL = "100/minute"
 
 # Email Settings
 EMAIL_VERIFICATION_REQUIRED = True
-EMAIL_FROM_NAME = "Sonma Hair Platform"
+EMAIL_FROM_NAME = "Bantu Event Platform"
 
 # Audit Log Settings
 AUDIT_LOG_RETENTION_DAYS = 90

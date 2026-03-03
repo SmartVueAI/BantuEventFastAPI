@@ -42,7 +42,7 @@ async def send_email(
 
         # ✅ FIX 2: Add proper Message-ID
         domain = settings.SMTP_FROM.split(
-            '@')[1] if '@' in settings.SMTP_FROM else 'sonmahair.com'
+            '@')[1] if '@' in settings.SMTP_FROM else 'bantuevents.com'
         message["Message-ID"] = make_msgid(domain=domain)
 
         # ✅ FIX 3: Add List-Unsubscribe header (helps with spam score)
