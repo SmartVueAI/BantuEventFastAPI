@@ -54,9 +54,6 @@ def setup_logging():
     except PermissionError:
         logger.warning("Cannot write to /app/logs, logging to stdout only")
 
-
-
-
 # Sanitize sensitive data from logs
 def sanitize_log_data(data: dict) -> dict:
     """Remove sensitive fields from log data"""
