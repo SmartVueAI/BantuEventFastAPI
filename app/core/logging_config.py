@@ -28,26 +28,26 @@ def setup_logging():
         log_dir.mkdir(parents=True, exist_ok=True)
         # File handler with rotation
         logger.add(
-            str(log_dir / "app_{time:YYYY-MM-DD}.log",
+            str(log_dir / "app_{time:YYYY-MM-DD}.log"),
                 rotation="00:00",  # Rotate at midnight
                 retention="30 days",  # Keep logs for 30 days
                 level="INFO",
                 format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
                 serialize=True,  # JSON format
                 backtrace=True,
-                diagnose=True)
+            diagnose=True
         )
 
         # Error file handler
         logger.add(
-            str(log_dir / "error_{time:YYYY-MM-DD}.log",
+            str(log_dir / "error_{time:YYYY-MM-DD}.log"),
                 rotation="00:00",
                 retention="30 days",
                 level="ERROR",
                 format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
                 serialize=True,
                 backtrace=True,
-                diagnose=True)
+            diagnose=True
         )
 
         logger.info("Logging configured successfully")
